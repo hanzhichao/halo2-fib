@@ -103,3 +103,23 @@ fn test_fib() {
     let prover = MockProver::run(5, &circuit, vec![public_input]).unwrap();
     prover.assert_satisfied();
 }
+
+#[cfg(feature = "dev")]
+#[test]
+fn print_fib() {
+    use plotters::prelude::*;
+    let root = BitMapBackend::new("fib-layout.png", (1024, 3096)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root.titled("Fib Layout", ("sans-serif", 60)).unwrap();
+
+    let circuit = FibCircuit {
+        a: Value::known(Fp::one()),
+        b: Value::known(Fp::one()),
+    };
+    halo2_proofs::dev::CircuitLayout::default()
+        .render(5, &circuit, &root)
+        .unwrap();
+
+    let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
+    print!("{}", dot_string);
+}
