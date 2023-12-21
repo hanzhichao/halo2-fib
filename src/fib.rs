@@ -10,7 +10,6 @@ struct FibConfig {
     selector: Selector,
     a: Column<Advice>,
     b: Column<Advice>,
-    c: Column<Advice>,
     target: Column<Instance>,
 }
 
@@ -23,24 +22,22 @@ impl FibChip {
         let selector = meta.selector();
         let a = meta.advice_column();
         let b = meta.advice_column();
-        let c = meta.advice_column();
         let target = meta.instance_column();
 
         meta.enable_equality(a);
         meta.enable_equality(b);
-        meta.enable_equality(c);
         meta.enable_equality(target);
 
         meta.create_gate("斐波那契(相加)", |meta| {
             let selector = meta.query_selector(selector);
             let num_a = meta.query_advice(a, Rotation::cur());
             let num_b = meta.query_advice(b, Rotation::cur());
-            let num_c = meta.query_advice(c, Rotation::cur());
+            let next_b = meta.query_advice(b, Rotation::next());
             vec![
-                ("a + b = c", selector * (num_a + num_b - num_c)),
+                ("a + b = next_b", selector * (num_a + num_b - next_b)),
             ]
         });
-        FibConfig { selector, a, b, c, target }
+        FibConfig { selector, a, b, target }
     }
 
     fn assign_first_row<F: Field>(&self, mut layouter: impl Layouter<F>, a: Value<F>, b: Value<F>) -> Result<(AssignedCell<F, F>, AssignedCell<F, F>), Error> {
@@ -48,8 +45,8 @@ impl FibChip {
             self.config.selector.enable(&mut region, 0)?;
             region.assign_advice(|| "加载a", self.config.a,  0, || a).expect("加载a失败");
             let cur_b = region.assign_advice(|| "加载b", self.config.b,  0, || b).expect("加载b失败");
-            let cur_c = region.assign_advice(|| "计算当前c", self.config.c,  0, || a+b).expect("填写c失败");
-            Ok((cur_b, cur_c))
+            let next_b = region.assign_advice(|| "计算当前c", self.config.b,  1, || a+b).expect("填写下一行b失败");
+            Ok((cur_b, next_b))
         })
     }
 
@@ -58,9 +55,9 @@ impl FibChip {
             self.config.selector.enable(&mut region, 0)?;
             let cur_a = pre_b.copy_advice(|| "拷贝上一行b到当前a", &mut region, self.config.a, 0).expect("拷贝到a失败");
             let cur_b = pre_c.copy_advice(|| "拷贝上一行c到当前b", &mut region, self.config.b, 0).expect("拷贝到b失败");
-            let value_c = cur_a.value_field().evaluate() + cur_b.value_field().evaluate();
-            let cur_c = region.assign_advice(|| "计算当前c", self.config.c, 0, || value_c).expect("填写c失败");
-            Ok((cur_b, cur_c))
+            let sum = cur_a.value_field().evaluate() + cur_b.value_field().evaluate();
+            let next_b = region.assign_advice(|| "计算当前c", self.config.b, 1, || sum).expect("填写下一行b失败");
+            Ok((cur_b, next_b))
         })
     }
 
@@ -105,6 +102,6 @@ fn test_fib() {
     let circuit = FibCircuit {a: Value::known(Fp::one()),b: Value::known(Fp::one())};
     let target = Fp::from(55);
     let public_input = vec![target];
-    let prover = MockProver::run(4, &circuit, vec![public_input]).unwrap();
+    let prover = MockProver::run(5, &circuit, vec![public_input]).unwrap();
     prover.assert_satisfied();
 }
