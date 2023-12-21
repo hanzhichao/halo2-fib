@@ -40,13 +40,9 @@ impl FibChip {
         FibConfig { selector, a, b, target }
     }
 
-    fn assign_first_row<F: Field>(&self, mut layouter: impl Layouter<F>, a: Value<F>, b: Value<F>) -> Result<(AssignedCell<F, F>, AssignedCell<F, F>), Error> {
-        layouter.assign_region(|| "填写第一行", |mut region| {
-            self.config.selector.enable(&mut region, 0)?;
-            region.assign_advice(|| "加载a", self.config.a,  0, || a).expect("加载a失败");
-            let cur_b = region.assign_advice(|| "加载b", self.config.b,  0, || b).expect("加载b失败");
-            let next_b = region.assign_advice(|| "计算当前c", self.config.b,  1, || a+b).expect("填写下一行b失败");
-            Ok((cur_b, next_b))
+    fn load_private<F: Field>(&self, mut layouter: impl Layouter<F>, value: Value<F>) -> Result<AssignedCell<F, F>, Error> {
+        layouter.assign_region(|| "加载隐私值", |mut region| {
+            region.assign_advice(|| "加载到a列", self.config.a,  0, || value)
         })
     }
 
@@ -83,16 +79,18 @@ impl<F: Field> Circuit<F> for FibCircuit<F> {
 
     fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<F>) -> Result<(), Error> {
         let fib = FibChip { config };
-        // 初始化第一行
-        let (mut b, mut c) = fib.assign_first_row(layouter.namespace(||"填写第一行"), self.a, self.b).expect("填写第一行失败");
+        // 初始化a, b
+        let mut a = fib.load_private(layouter.namespace(||"初始化a"), self.a).expect("加载a失败");
+        let mut b = fib.load_private(layouter.namespace(||"初始化b"), self.b).expect("加载b失败");
+
         // 循环填写下一行
-        for _i in 3..10 {
-            let (next_b, next_c) = fib.assign_next_row(layouter.namespace(||"填写下一行"), &b, &c).expect("填写下一行失败");
+        for _i in 2..10 {
+            let (next_a, next_b) = fib.assign_next_row(layouter.namespace(||"填写下一行"), &a, &b).expect("填写下一行失败");
+            a = next_a;
             b = next_b;
-            c = next_c;
         }
         // 暴露结果
-        fib.expose_public(layouter, &c, 0)?;
+        fib.expose_public(layouter, &b, 0)?;
         Ok(())
     }
 }
