@@ -4,6 +4,7 @@ use halo2_proofs::{plonk::*};
 use halo2_proofs::arithmetic::Field;
 use halo2_proofs::dev::MockProver;
 use halo2_proofs::pasta::Fp;
+use plotters::prelude::WHITE;
 
 #[derive(Clone, Debug, Copy)]
 struct FibConfig {
@@ -107,4 +108,26 @@ fn test_fib() {
     let public_input = vec![target];
     let prover = MockProver::run(4, &circuit, vec![public_input]).unwrap();
     prover.assert_satisfied();
+}
+
+#[cfg(feature = "dev")]
+#[test]
+fn print_fib() {
+    use plotters::prelude::*;
+    use halo2_proofs::pasta::Fp;
+
+    let root = BitMapBackend::new("fib-layout.png", (1024, 3096)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+    let root = root.titled("Fib Layout", ("sans-serif", 60)).unwrap();
+
+    let circuit = FibCircuit {
+        a: Value::known(Fp::one()),
+        b: Value::known(Fp::one()),
+    };
+    halo2_proofs::dev::CircuitLayout::default()
+        .render(4, &circuit, &root)
+        .unwrap();
+
+    let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
+    print!("{}", dot_string);
 }

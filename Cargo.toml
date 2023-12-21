@@ -3,5 +3,9 @@ name = "halo2_fib"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+dev = ["halo2_proofs/dev-graph", "plotters"]
+
 [dependencies]
 halo2_proofs = { git = "https://github.com/zcash/halo2.git" }
+plotters = { version = "0.3.5", optional = true }
