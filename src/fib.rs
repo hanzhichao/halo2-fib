@@ -2,8 +2,6 @@ use halo2_proofs::circuit::{Value, Layouter, AssignedCell, SimpleFloorPlanner};
 use halo2_proofs::poly::Rotation;
 use halo2_proofs::{plonk::*};
 use halo2_proofs::arithmetic::Field;
-use halo2_proofs::dev::MockProver;
-use halo2_proofs::pasta::Fp;
 
 #[derive(Clone, Debug, Copy)]
 struct FibConfig {
@@ -97,6 +95,9 @@ impl<F: Field> Circuit<F> for FibCircuit<F> {
 
 #[test]
 fn test_fib() {
+    use halo2_proofs::dev::MockProver;
+    use halo2_proofs::pasta::Fp;
+
     let circuit = FibCircuit {a: Value::known(Fp::one()),b: Value::known(Fp::one())};
     let target = Fp::from(55);
     let public_input = vec![target];
@@ -108,6 +109,8 @@ fn test_fib() {
 #[test]
 fn print_fib() {
     use plotters::prelude::*;
+    use halo2_proofs::pasta::Fp;
+
     let root = BitMapBackend::new("fib-layout.png", (1024, 3096)).into_drawing_area();
     root.fill(&WHITE).unwrap();
     let root = root.titled("Fib Layout", ("sans-serif", 60)).unwrap();
