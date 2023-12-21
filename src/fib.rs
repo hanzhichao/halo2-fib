@@ -84,15 +84,15 @@ impl<F: Field> Circuit<F> for FibCircuit<F> {
     fn synthesize(&self, config: Self::Config, mut layouter: impl Layouter<F>) -> Result<(), Error> {
         let fib = FibChip { config };
         // 初始化第一行
-        let (mut b, mut c) = fib.assign_first_row(layouter.namespace(||"填写第一行"), self.a, self.b).expect("填写第一行失败");
+        let (mut a, mut b) = fib.assign_first_row(layouter.namespace(||"填写第一行"), self.a, self.b).expect("填写第一行失败");
         // 循环填写下一行
         for _i in 3..10 {
-            let (next_b, next_c) = fib.assign_next_row(layouter.namespace(||"填写下一行"), &b, &c).expect("填写下一行失败");
+            let (next_a, next_b) = fib.assign_next_row(layouter.namespace(||"填写下一行"), &a, &b).expect("填写下一行失败");
+            a = next_a;
             b = next_b;
-            c = next_c;
         }
         // 暴露结果
-        fib.expose_public(layouter, &c, 0)?;
+        fib.expose_public(layouter, &b, 0)?;
         Ok(())
     }
 }
